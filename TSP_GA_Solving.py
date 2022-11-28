@@ -1,11 +1,3 @@
-"""
-
-룰렛 휠 선택법 추가(roulette_wheel_selection())
-적합도 점수 최상 2개 개체 고르는 기능 함수로 묶음(best_score_selection())
-각종 하이퍼 파라미터 종합 정리, 변수화
-
-"""
-
 import numpy as np
 import random
 from tqdm import tqdm
@@ -20,6 +12,7 @@ if normalize_fitness is True: # 반복 멈출 적합도 점수 최소치 결정
 else:
     fitness_threshold = 750
 show_info_num = 500 # 출력 빈도 결정(반비례)
+mutation_freq = 50 # 돌연변이 출현 빈도 결정(반비례)
 
 graph = [[0] * num_of_cities for _ in range(num_of_cities)]
 
@@ -155,29 +148,30 @@ def cyclic_crossover(p1, p2):
     return c1, c2
 
 def cyclic_crossover_ver_numpy(p1, p2):
-    c1 = [-1] * 30
-    c2 = [-1] * 30
+    c1 = np.array([-1] * 30)
+    c2 = np.array([-1] * 30)
     c1[0] = p1[0]
     c2[0] = p2[0]
 
-    c1 = np.array(c1)
-    c2 = np.array(c2)
-
     index = 0
+    passed_index = []
     while True:
         value = p2[index]
         index = np.where(p1 == value)[0][0]
-        if index == 0:
+        if index in passed_index:
             break
         c1[index] = p1[index]
+        passed_index.append(index)
 
     index = 0
+    passed_index = []
     while True:
         value = p1[index]
         index = np.where(p2 == value)[0][0]
-        if index == 0:
+        if index in passed_index:
             break
         c2[index] = p2[index]
+        passed_index.append(index)
 
     index_of_none = np.where(c1 == -1)
     for i in range(len(index_of_none)):
@@ -219,7 +213,7 @@ for count in tqdm(range(100000)):
     temp_child = []
     for i in range(len(sel_indices) - 1):
         c1, c2 = cyclic_crossover_ver_numpy(population[sel_indices[i]], population[sel_indices[i+1]])
-        if count % 50 == 0:
+        if count % mutation_freq == 0:
             mutation_oper(c1, 2)
             mutation_oper(c2, 2)
 

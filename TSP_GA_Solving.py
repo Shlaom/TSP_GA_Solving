@@ -1,13 +1,3 @@
-"""
-
-cyclic_crossover()에서 한 주기 종료 조건을 인덱스값이 다시 0이 됐을 때가 아니라
-이미 한 번 지나간 인덱스 리스트 안에 있는 인덱스가 걸렸을 때로 수정.
-
-ordered_crossover() 완성 및 코드 정리
-여러 사이즈의 문제 집합에 대해 테스트
-
-"""
-
 import numpy as np
 import random
 from tqdm import tqdm
@@ -19,16 +9,15 @@ max_weight_range = num_of_cities + min_weight_range # 가중치 최대값
 size_of_pop = 500 # 한 개체군의 개체 수
 normalize_fitness = True # 적합도 점수 정규화 여부 결정
 if normalize_fitness is True: # 반복 멈출 적합도 점수 최소치 결정
-    fitness_threshold = 0.90
+    fitness_threshold = 0.85
 else:
-    fitness_threshold = num_of_cities**2-(num_of_cities**2)/10
+    fitness_threshold = 0.85 * (max_weight_range * num_of_cities - min_weight_range * num_of_cities) \
+                        + min_weight_range * num_of_cities
 GA_iter = 100000
-num_of_sel_chroms = int((size_of_pop / 100) * 3)
-#show_info_num = int(GA_iter/2000) # 출력 빈도 결정(반비례)
+crossover_rate = 15
 show_info_num = 500
-mutation_frequency = 50 # 돌연변이 출연 비율 결정(반비례)
-mutation_rate = 2
-#mutation_rate = int((num_of_cities/10)-1)
+mutation_rate = 50
+num_mutation_exchange = 2
 
 graph = [[0] * num_of_cities for _ in range(num_of_cities)]
 
@@ -89,6 +78,12 @@ def cal_sum_of_weights(chrom):
         sum_of_weights += graph[chrom[i]][chrom[i+1]]
     return sum_of_weights
 
+def sequential_search(arr, target):
+    for i in range(len(arr)):
+        if arr[i] >= target:
+            return i
+    return None
+
 
 #selection 기법
 def best_chroms_selection(population, num = 2):
@@ -106,39 +101,20 @@ def roulette_wheel_selection(population, num = 2):
     accumulated_score[0] = fitness_of_chroms[0]
     for i in range(len(accumulated_score)-1):
         accumulated_score[i + 1] = accumulated_score[i] + fitness_of_chroms[i+1]
-    #랜덤수 하나하나보다 큰 누적 적합도 갖는 인덱스 뽑아내서 모아
+
     indices_selected = []
     for i in range(len(num_rand)):
         indices_selected.append(sequential_search(accumulated_score, num_rand[i]))
     return indices_selected
 
-def sequential_search(arr, target):
-    for i in range(len(arr)):
-        if arr[i] >= target:
-            return i
-    return None
-
 
 #crossover 기법
-def uniform_crossover(p1, p2, crossover_rate):
-    c1 = p1.copy()
-    c2 = p2.copy()
-    m = np.random.rand(num_of_cities)
-    m = list(m)
-    for i in range(len(m)):
-        if m[i] > crossover_rate:
-            temp = c1[i]
-            c1[i] = c2[i]
-            c2[i] = temp
-    return c1, c2
-
 def cyclic_crossover_ver_numpy(p1, p2):
     c1 = np.array([-1] * len(p1))
     c2 = np.array([-1] * len(p1))
     c1[0] = p1[0]
     c2[0] = p2[0]
 
-    # 한 주기 돌며 유전자 정보 삽입하는 코드. 판단기준을 index == 0으로 수정 가능.
     index = 0
     passed_index = []
     while True:
@@ -174,20 +150,11 @@ def ordered_crossover(p1, p2):
     c1 = np.array([-1] * len(p1))
     c2 = np.array([-1] * len(p2))
 
-    #자손들은 일단 가운데 부분의 정보 그대로 물려받음
     c1[wall:wall * 2] = p1[wall:wall * 2]
     c2[wall:wall * 2] = p2[wall:wall * 2]
 
-    #두 번째 부모의 두 번째 교배점 이후부터 순서를 다시 씀
-    #첫 자손의 가운데 부분 정보 제외시켜
-    #이 정보를 첫 자손의 두 번째 교배점 이후부터 삽입
-    #두 번째 자손도 반대로 똑같이 해
-
-    #아니면 굳이 두 번째 교배점부터 생각할 게 아니라 그냥 순서대로 붙여
     temp_p1 = p1.copy()
     temp_p2 = p2.copy()
-#    temp_p2.pop(c1[wall:wall * 2])
-#    temp_p1.pop(c2[wall:wall * 2])
     a = p1[wall:wall * 2]
     b = p2[wall:wall * 2]
     indices1, indices2 = [], []
@@ -228,15 +195,15 @@ def mutation_oper(chrom, mutation_rate):
 for count in tqdm(range(GA_iter)):
     population, fitness_of_chroms = sort_pop_by_score(population)
 
-    #sel_indices = roulette_wheel_selection(population, num_of_sel_chroms)
-    sel_indices = best_chroms_selection(population, num_of_sel_chroms)
+    #sel_indices = roulette_wheel_selection(population, crossover_rate)
+    sel_indices = best_chroms_selection(population, crossover_rate)
     temp_child = []
     for i in range(len(sel_indices) - 1):
         c1, c2 = cyclic_crossover_ver_numpy(population[sel_indices[i]], population[sel_indices[i+1]])
         #c1, c2 = ordered_crossover(population[sel_indices[i]], population[sel_indices[i + 1]])
-        if count % mutation_frequency == 0:
-            mutation_oper(c1, mutation_rate)
-            mutation_oper(c2, mutation_rate)
+        if count % mutation_rate == 0:
+            mutation_oper(c1, num_mutation_exchange)
+            mutation_oper(c2, num_mutation_exchange)
 
         temp_child.append(c1)
         temp_child.append(c2)
@@ -259,6 +226,7 @@ for count in tqdm(range(GA_iter)):
 
     if fitness_of_chroms[0] >= fitness_threshold: break
 
+fitness_of_pop, _ = cal_fitness_of_population(population, normalize_fitness)
 population, fitness_of_chroms = sort_pop_by_score(population)
 print('Fitness of population: ', fitness_of_pop)
 print('Fitnesses of chromosomes: ', fitness_of_chroms)

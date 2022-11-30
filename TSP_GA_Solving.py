@@ -94,7 +94,7 @@ def best_chroms_selection(population, num = 2):
     return inds
 
 def roulette_wheel_selection(population, num = 2):
-    _, fitness_of_chroms = cal_fitness_of_population(population, normalize_fitness)
+    _, fitness_of_chroms = cal_fitness_of_population(population, normalize=False)
     sum_of_scores = sum(fitness_of_chroms)
     num_rand = random.sample(range(0, sum_of_scores), num)
     accumulated_score = [0] * len(population)

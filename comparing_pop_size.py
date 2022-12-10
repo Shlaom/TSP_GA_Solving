@@ -1,6 +1,8 @@
 import numpy as np
 import random
 from tqdm import tqdm
+import time
+import matplotlib.pyplot as plt
 
 #TSP, Hyperparameters
 num_of_cities = 100 # 노드수
@@ -13,7 +15,7 @@ if normalize_fitness is True: # 반복 멈출 적합도 점수 최소치 결정
 else:
     fitness_threshold = 0.85 * ((max_weight_range-1) * num_of_cities - min_weight_range * num_of_cities) \
                         + min_weight_range * num_of_cities
-GA_iter = 30000
+GA_iter = 20000
 crossover_rate = 15
 show_info_num = 500
 mutation_rate = 2
@@ -36,6 +38,14 @@ population = []
 for i in range(size_of_pop):
     population.append(random.sample(range(min_weight_range-1, max_weight_range-1), num_of_cities))
 
+
+def make_pop():
+    population = []
+
+    for i in range(size_of_pop):
+        population.append(random.sample(range(min_weight_range - 1, max_weight_range - 1), num_of_cities))
+
+    return population
 
 def sort_pop_by_score(population):
     fitness_of_pop, fitness_of_chroms = cal_fitness_of_population(population, normalize_fitness)
@@ -192,43 +202,62 @@ def mutation_oper(chrom, mutation_rate):
 
 
 #GA 실행
-for count in tqdm(range(GA_iter)):
+size_of_pop = 70
+fitness_threshold = 0.9
+for p in range(10):
+    score_list = []
+    population = make_pop()
+    for count in tqdm(range(GA_iter)):
+        population, fitness_of_chroms = sort_pop_by_score(population)
+
+        #sel_indices = roulette_wheel_selection(population, crossover_rate)
+        sel_indices = best_chroms_selection(population, crossover_rate)
+        temp_child = []
+        for i in range(len(sel_indices) - 1):
+            c1, c2 = cyclic_crossover_ver_numpy(population[sel_indices[i]], population[sel_indices[i+1]])
+            #c1, c2 = ordered_crossover(population[sel_indices[i]], population[sel_indices[i + 1]])
+            if count % mutation_rate == 0:
+                mutation_oper(c1, num_mutation_exchange)
+                mutation_oper(c2, num_mutation_exchange)
+
+            temp_child.append(c1)
+            temp_child.append(c2)
+
+        for i in range(len(temp_child)):
+            population.pop()
+        for i in range(len(temp_child)):
+            population.append(temp_child[i])
+
+        fitness_of_pop, fitness_of_chroms = cal_fitness_of_population(population, normalize_fitness)
+
+        '''if count % show_info_num == 0:
+            print()
+            print('Max fitness of chromosomes: ', fitness_of_chroms[0])
+            print('Present fitness of population: ', fitness_of_pop)
+            print('Sum of weights: ', cal_sum_of_weights(population[0]))
+            print("============================================================")'''
+
+        count += 1
+        _, fitness_of_chroms = sort_pop_by_score(population)
+        score_list.append(fitness_of_chroms[0])
+
+        if fitness_of_chroms[0] >= fitness_threshold: break
+
+    fitness_of_pop, _ = cal_fitness_of_population(population, normalize_fitness)
     population, fitness_of_chroms = sort_pop_by_score(population)
-
-    #sel_indices = roulette_wheel_selection(population, crossover_rate)
-    sel_indices = best_chroms_selection(population, crossover_rate)
-    temp_child = []
-    for i in range(len(sel_indices) - 1):
-        c1, c2 = cyclic_crossover_ver_numpy(population[sel_indices[i]], population[sel_indices[i+1]])
-        #c1, c2 = ordered_crossover(population[sel_indices[i]], population[sel_indices[i + 1]])
-        if count % mutation_rate == 0:
-            mutation_oper(c1, num_mutation_exchange)
-            mutation_oper(c2, num_mutation_exchange)
-
-        temp_child.append(c1)
-        temp_child.append(c2)
-
-    for i in range(len(temp_child)):
-        population.pop()
-    for i in range(len(temp_child)):
-        population.append(temp_child[i])
-
-    fitness_of_pop, fitness_of_chroms = cal_fitness_of_population(population, normalize_fitness)
-
-    if count % show_info_num == 0:
-        print()
-        print('Max fitness of chromosomes: ', fitness_of_chroms[0])
-        print('Present fitness of population: ', fitness_of_pop)
-        print('Sum of weights: ', cal_sum_of_weights(population[0]))
-        print("============================================================")
-
-    count += 1
-
-    if fitness_of_chroms[0] >= fitness_threshold: break
-
-fitness_of_pop, _ = cal_fitness_of_population(population, normalize_fitness)
-population, fitness_of_chroms = sort_pop_by_score(population)
-print('Fitness of population: ', fitness_of_pop)
-print('Fitnesses of chromosomes: ', fitness_of_chroms)
-print('Max fitness chromosome info: ', population[0])
-print("Max fitness chromosome's sum of weights: ", cal_sum_of_weights(population[0]))
+    print()
+    print('Fitness of population: ', fitness_of_pop)
+    print('Fitnesses of chromosomes: ', fitness_of_chroms)
+    print('Max fitness chromosome info: ', population[0])
+    print("Max fitness chromosome's sum of weights: ", cal_sum_of_weights(population[0]))
+    print('size_of_pop: ', size_of_pop)
+    print("==========================================================================")
+    size_of_pop += 20
+    plt.subplot(4, 4, p+1)
+    plt.plot(score_list)
+    plt.ylim([0.5, 1])
+    plt.xlim([0, 4000])
+    plt.title('size of population: ' + str(size_of_pop))
+    time.sleep(1)
+plt.suptitle('crossover_rate: ' + str(crossover_rate) + ', mutation_rate: ' + str(mutation_rate) + ', num_mutation_exchange: ' + str(num_mutation_exchange))
+plt.show()

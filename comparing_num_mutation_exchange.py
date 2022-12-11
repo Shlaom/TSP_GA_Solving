@@ -15,7 +15,7 @@ if normalize_fitness is True: # 반복 멈출 적합도 점수 최소치 결정
 else:
     fitness_threshold = 0.85 * ((max_weight_range-1) * num_of_cities - min_weight_range * num_of_cities) \
                         + min_weight_range * num_of_cities
-GA_iter = 20000
+GA_iter = 15000
 crossover_rate = 15
 show_info_num = 500
 mutation_rate = 2
@@ -204,9 +204,14 @@ def mutation_oper(chrom, mutation_rate):
 #GA 실행
 num_mutation_exchange = 1
 fitness_threshold = 0.9
+origin_population = make_pop()
+
 for p in range(5):
     score_list = []
-    population = make_pop()
+    population = origin_population.copy()
+    generation = GA_iter
+
+    start_time = time.time()
     for count in tqdm(range(GA_iter)):
         population, fitness_of_chroms = sort_pop_by_score(population)
 
@@ -241,7 +246,11 @@ for p in range(5):
         _, fitness_of_chroms = sort_pop_by_score(population)
         score_list.append(fitness_of_chroms[0])
 
-        if fitness_of_chroms[0] >= fitness_threshold: break
+        if fitness_of_chroms[0] >= fitness_threshold:
+            generation = count
+            break
+
+    end_time = time.time()
 
     fitness_of_pop, _ = cal_fitness_of_population(population, normalize_fitness)
     population, fitness_of_chroms = sort_pop_by_score(population)
@@ -252,12 +261,16 @@ for p in range(5):
     print("Max fitness chromosome's sum of weights: ", cal_sum_of_weights(population[0]))
     print('num_mutation_exchange: ', num_mutation_exchange)
     print("==========================================================================")
-    num_mutation_exchange += 1
-    plt.subplot(4, 4, p+1)
+    plt.subplot(3, 3, p+1)
     plt.plot(score_list)
-    plt.ylim([0.5, 1])
-    plt.xlim([0, 4000])
-    plt.title('num mutation exchange: ' + str(num_mutation_exchange))
+    plt.ylim([0.5, 0.9])
+    plt.xlim([0, 15000])
+    elapsed_time = end_time - start_time
+    plt.title('Num of mutation exchange: ' + str(num_mutation_exchange) + '  /  ' + str(round(elapsed_time)) + 'sec  /  generation: ' + str(generation))
+    plt.xlabel('Num of iteration')
+    plt.ylabel('Fitness score')
+    plt.grid(True)
+    num_mutation_exchange += 1
     time.sleep(1)
-plt.suptitle('size_of_pop: ' + str(size_of_pop) + ', crossover_rate: ' + str(crossover_rate) + ', mutation_rate: ' + str(mutation_rate))
+plt.suptitle('Size of pop: ' + str(size_of_pop) + '   /   Crossover rate: ' + str(crossover_rate) + '   /   Mutation rate: ' + str(mutation_rate))
 plt.show()
